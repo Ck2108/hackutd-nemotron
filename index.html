@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NemoCode.io</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
+          crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
+            crossorigin=""></script>
+    <style>
+        /* Custom styles for color swatches, badges, etc. */
+        .color-swatch {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+            border: 4px solid;
+        }
+        .genre-badge, .mood-badge, .use-badge {
+            font-weight: bold;
+            border: 2px solid;
+            padding: 0.5rem;
+        }
+        /* Loading spinner */
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #76B900;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        /* Smooth transitions */
+        .transition-all {
+            transition: all 0.3s ease;
+        }
+        /* Custom map markers */
+        .custom-marker {
+            background: transparent !important;
+            border: none !important;
+        }
+        /* Tab active state */
+        .tab-button.active {
+            color: #76B900;
+            border-bottom: 2px solid #76B900;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Header -->
+    <header style="background-color: #76B900;" class="text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-center">NemoCode.io</h1>
+            <p class="text-center mt-2" style="color: rgba(255,255,255,0.9);">AI-Powered Trip Planning</p>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Status Banner -->
+        <div id="status-banner" class="hidden mb-6 p-4 rounded-lg">
+            <div id="status-message" class="text-center font-semibold"></div>
+        </div>
+
+        <!-- Main Content Area -->
+        <div id="main-content" class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Sidebar: Trip Configuration -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow-md p-6 sticky top-4">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800">Trip Configuration</h2>
+                    
+                    <form id="trip-form" class="space-y-4">
+                        <!-- Origin -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Origin</label>
+                            <input type="text" id="origin" name="origin" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                   value="Dallas, TX" required>
+                        </div>
+
+                        <!-- Destination -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Destination</label>
+                            <input type="text" id="destination" name="destination" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                   value="Austin, TX" required>
+                        </div>
+
+                        <!-- Dates -->
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                                <input type="date" id="start-date" name="start_date" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                       required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                                <input type="date" id="end-date" name="end_date" 
+                                       class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                       required>
+                            </div>
+                        </div>
+
+                        <!-- Travelers -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Number of Travelers</label>
+                            <input type="number" id="travelers" name="travelers" min="1" max="10" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                   value="2" required>
+                        </div>
+
+                        <!-- Budget -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Total Budget ($)</label>
+                            <input type="number" id="budget" name="budget_total" min="100" max="10000" step="50" 
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                                   value="800" required>
+                        </div>
+
+                        <!-- Interests -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Interests</label>
+                            <div class="space-y-2 max-h-48 overflow-y-auto border border-gray-300 rounded-md p-2">
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="interests" value="BBQ" class="mr-2" checked>
+                                    <span>BBQ</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="interests" value="live music" class="mr-2" checked>
+                                    <span>Live Music</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="interests" value="parks" class="mr-2">
+                                    <span>Parks</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="interests" value="museums" class="mr-2">
+                                    <span>Museums</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="interests" value="coffee" class="mr-2">
+                                    <span>Coffee</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="interests" value="breweries" class="mr-2">
+                                    <span>Breweries</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="interests" value="outdoor activities" class="mr-2">
+                                    <span>Outdoor Activities</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="interests" value="nightlife" class="mr-2">
+                                    <span>Nightlife</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="interests" value="art" class="mr-2">
+                                    <span>Art</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" name="interests" value="shopping" class="mr-2">
+                                    <span>Shopping</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Configuration -->
+                        <div class="pt-4 border-t border-gray-200">
+                            <h3 class="text-lg font-semibold mb-2 text-gray-800">Configuration</h3>
+                            
+                            <label class="flex items-center mb-2">
+                                <input type="checkbox" id="use-mocks" name="use_mocks" class="mr-2">
+                                <span class="text-sm">Use mock data</span>
+                            </label>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Weather Demo Mode</label>
+                                <select id="weather-mode" name="weather_mode" 
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <option value="sunny">Sunny</option>
+                                    <option value="rainy">Rainy</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Submit Button -->
+                        <button type="submit" id="plan-button" 
+                                style="background-color: #76B900;" class="w-full hover:opacity-90 text-white font-bold py-3 px-4 rounded-md transition-all transform hover:scale-105">
+                            🚀 Plan My Trip
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Main Content: Results -->
+            <div class="lg:col-span-3">
+                <!-- Welcome Message -->
+                <div id="welcome-message" class="bg-white rounded-lg shadow-md p-6">
+                    <h2 class="text-2xl font-bold mb-4 text-gray-800">Welcome to NemoCode.io! 👋</h2>
+                    <p class="text-gray-600 mb-4">
+                        This AI agent will help you plan your perfect trip by:
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 text-gray-600 mb-4">
+                        <li>🗺️ <strong>Planning</strong> - Creating a multi-step execution plan</li>
+                        <li>🚗 <strong>Transport</strong> - Finding the best way to get there</li>
+                        <li>🏨 <strong>Lodging</strong> - Selecting hotels within your budget</li>
+                        <li>🎯 <strong>Activities</strong> - Finding things to do based on your interests</li>
+                        <li>📊 <strong>Budget Management</strong> - Tracking costs and re-planning when needed</li>
+                    </ul>
+                    <p class="text-gray-600">
+                        <strong>Ready to start planning?</strong> Fill out the form on the left and click the button!
+                    </p>
+                </div>
+
+                <!-- Loading Indicator -->
+                <div id="loading" class="hidden bg-white rounded-lg shadow-md p-6 text-center">
+                    <div class="spinner mx-auto mb-4"></div>
+                    <p class="text-gray-600 font-semibold" id="loading-message">Planning your trip...</p>
+                    <div class="mt-4 w-full bg-gray-200 rounded-full h-2.5">
+                        <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full transition-all" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Results Container -->
+                <div id="results" class="hidden">
+                    <!-- Trip Summary -->
+                    <div id="trip-summary" class="bg-white rounded-lg shadow-md p-6 mb-6"></div>
+
+                    <!-- Tabs -->
+                    <div class="bg-white rounded-lg shadow-md">
+                        <div class="border-b border-gray-200">
+                            <nav class="flex -mb-px">
+                                <button class="tab-button active px-6 py-3 text-sm font-medium border-b-2" 
+                                        style="color: #76B900; border-color: #76B900;"
+                                        data-tab="schedule">📅 Daily Schedule</button>
+                                <button class="tab-button px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300" 
+                                        data-tab="budget">💰 Budget Breakdown</button>
+                                <button class="tab-button px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300" 
+                                        data-tab="map">🗺️ Map View</button>
+                                <button class="tab-button px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300" 
+                                        data-tab="clothing">👔 Clothing Suggestions</button>
+                                <button class="tab-button px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300" 
+                                        data-tab="music">🎵 Music for Social Media</button>
+                                <button class="tab-button px-6 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300" 
+                                        data-tab="history">📚 City History</button>
+                            </nav>
+                        </div>
+
+                        <!-- Tab Contents -->
+                        <div class="p-6">
+                            <!-- Daily Schedule Tab -->
+                            <div id="tab-schedule" class="tab-content">
+                                <div id="schedule-content"></div>
+                            </div>
+
+                            <!-- Budget Breakdown Tab -->
+                            <div id="tab-budget" class="tab-content hidden">
+                                <div id="budget-content"></div>
+                            </div>
+
+                            <!-- Map View Tab -->
+                            <div id="tab-map" class="tab-content hidden">
+                                <div id="map-content">
+                                    <div id="map" style="height: 500px; width: 100%; min-height: 500px; background-color: #f0f0f0;"></div>
+                                    <div id="map-legend" class="mt-4"></div>
+                                </div>
+                            </div>
+
+                            <!-- Clothing Suggestions Tab -->
+                            <div id="tab-clothing" class="tab-content hidden">
+                                <div id="clothing-content"></div>
+                            </div>
+
+                            <!-- Music Recommendations Tab -->
+                            <div id="tab-music" class="tab-content hidden">
+                                <div id="music-content"></div>
+                            </div>
+                            
+                            <!-- City History Tab -->
+                            <div id="tab-history" class="tab-content hidden">
+                                <div id="history-content"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Agent Log Section -->
+                    <div id="agent-log" class="mt-6 bg-white rounded-lg shadow-md p-6 hidden">
+                        <h3 class="text-xl font-bold mb-4 text-gray-800">🤖 Agent Execution Log</h3>
+                        <div id="log-content" class="space-y-4"></div>
+                    </div>
+
+                    <!-- Download Options -->
+                    <div id="download-options" class="mt-6 bg-white rounded-lg shadow-md p-6">
+                        <h3 class="text-xl font-bold mb-4 text-gray-800">💾 Download Options</h3>
+                        <div class="grid grid-cols-2 gap-4">
+                            <button id="download-json" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-all">
+                                📄 Download Itinerary JSON
+                            </button>
+                            <button id="download-calendar" class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-md transition-all">
+                                📅 Download Calendar Events
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="app.js"></script>
+</body>
+</html>
+
